@@ -1,7 +1,12 @@
 # Running instructions
 ```
-streamlit app.py
+streamlit run app.py
 ```
+
+# NOTES
+- Fix loading time
+- Move team and driver code to separate files
+- Draw a wireframe to stick to a structure for UI
 
 # F1 Race Analytics Dashboard - Development Plan
 

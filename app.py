@@ -30,6 +30,14 @@ session.load()
 drivers = session.drivers
 driver_names = [session.get_driver(d)['FullName'] for d in drivers]
 
+def driver_analysis(driver):
+    st.subheader(f"Analysis for {driver}")
+    # driver data
+
+def team_analysis(team):
+    st.subheader(f"Analysis for {team}")
+    # team data
+
 # Streamlit UI
 st.title("F1 Race Analytics and Prediction")
 st.write("Welcome to the F1 Race Analytics and Prediction app!")
@@ -39,6 +47,10 @@ option = st.sidebar.selectbox("Choose an option:", ["Driver Analysis", "Team Ana
 
 if option == "Driver Analysis":
     driver = st.selectbox("Select a driver:", driver_names)
+    if driver:
+        driver_analysis(driver)
 elif option == "Team Analysis":
     # placeholder names (add dynamic teams loading later)
     team = st.selectbox("Select a team:", ["Red Bull", "Ferrari", "Mercedes", "McLaren", "Williams", "Aston Martin", "Alpine", "Racing Bulls", "Haas", "Sauber", "Cadillac"])
+    if team:
+        team_analysis(team)
