@@ -1,3 +1,8 @@
+# Running instructions
+```
+streamlit app.py
+```
+
 # F1 Race Analytics Dashboard - Development Plan
 
 ## 1️⃣ Set Up Project Environment
