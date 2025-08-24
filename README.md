@@ -1,3 +1,8 @@
+# Initial Setup
+```
+pip install requirements.txt
+```
+
 # Running instructions
 ```
 streamlit run app.py
