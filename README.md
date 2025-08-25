@@ -8,11 +8,6 @@ pip install requirements.txt
 streamlit run app.py
 ```
 
-# NOTES
-- Fix loading time
-- Move team and driver code to separate files
-- Draw a wireframe to stick to a structure for UI
-
 # F1 Race Analytics Dashboard - Development Plan
 
 ## 1️⃣ Set Up Project Environment
