@@ -2,6 +2,7 @@ import fastf1
 import os
 import streamlit as st
 import datetime
+import driver, team
 
 # Enable cache
 if not os.path.isdir('cache'):
@@ -23,20 +24,24 @@ else:
     selected_race = past_races.iloc[-1]
 
 # Load that session
-session = fastf1.get_session(2025, selected_race['EventName'], 'R')
-session.load()
+@st.cache_data(show_spinner=True)
+def load_session(year, race_name, session_type):
+    session = fastf1.get_session(year, race_name, session_type)
+    session.load()
+    return session
+
+session = load_session(2025, selected_race['EventName'], 'R')
 
 # Extract drivers
 drivers = session.drivers
 driver_names = [session.get_driver(d)['FullName'] for d in drivers]
 
-def driver_analysis(driver):
-    st.subheader(f"Analysis for {driver}")
-    # driver data
 
-def team_analysis(team):
-    st.subheader(f"Analysis for {team}")
-    # team data
+# Get teams
+teams = set()
+for d in drivers:
+    teams.add(session.get_driver(d)['TeamName'])
+team_names = list(teams)
 
 # Streamlit UI
 st.title("F1 Race Analytics and Prediction")
@@ -46,11 +51,13 @@ st.sidebar.title("Driver or Team Select")
 option = st.sidebar.selectbox("Choose an option:", ["Driver Analysis", "Team Analysis"])
 
 if option == "Driver Analysis":
-    driver = st.selectbox("Select a driver:", driver_names)
-    if driver:
-        driver_analysis(driver)
+    driver_map = {session.get_driver(d)['FullName']: d for d in session.drivers}
+    selected_driver_name = st.selectbox("Select a driver:", list(driver_map.keys()))
+    if selected_driver_name:
+        driver_id = driver_map[selected_driver_name]
+        driver.show_driver_page(session, driver_id)
+
 elif option == "Team Analysis":
-    # placeholder names (add dynamic teams loading later)
-    team = st.selectbox("Select a team:", ["Red Bull", "Ferrari", "Mercedes", "McLaren", "Williams", "Aston Martin", "Alpine", "Racing Bulls", "Haas", "Sauber", "Cadillac"])
-    if team:
-        team_analysis(team)
+    selected_team = st.selectbox("Select a team:", team_names)
+    if selected_team:
+        team.show_team_page(selected_team)
