@@ -24,7 +24,7 @@ else:
     selected_race = past_races.iloc[-1]
 
 # Load that session
-@st.cache_data(show_spinner=True)
+@st.cache_data(show_spinner=False)
 def load_session(year, race_name, session_type):
     session = fastf1.get_session(year, race_name, session_type)
     session.load()
@@ -35,7 +35,6 @@ session = load_session(2025, selected_race['EventName'], 'R')
 # Extract drivers
 drivers = session.drivers
 driver_names = [session.get_driver(d)['FullName'] for d in drivers]
-
 
 # Get teams
 teams = set()
