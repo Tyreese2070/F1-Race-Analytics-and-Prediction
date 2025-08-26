@@ -11,20 +11,24 @@ constructors = pd.read_csv(os.path.join(DATA_DIR, "constructors.csv"))
 races = pd.read_csv(os.path.join(DATA_DIR, "races.csv"))
 results = pd.read_csv(os.path.join(DATA_DIR, "results.csv"))
 
-def get_recent_driver_constructors(year=None):
-    if year is None:
-        year = races['year'].max()
-    
-    races_year = races[races['year'] == year]
-    race_ids = races_year['raceId'].unique()
+def get_recent_driver_constructors():
+    '''
+    Get all drivers and their most recent constructor information
+    '''
 
-    results_year = results[results['raceId'].isin(race_ids)]
+    # Get all races between 2018 and 2024
+    races_range = races[(races['year'] >= 2018) & (races['year'] <= 2024)]
+    race_ids = races_range['raceId'].unique()
 
-    df = results_year.merge(drivers, on='driverId', how='left') \
+    results_range = results[results['raceId'].isin(race_ids)]
+
+    df = results_range.merge(drivers, on='driverId', how='left') \
                      .merge(constructors, on='constructorId', how='left')
     
+    # Get the last team for each driver in this range
     df = df.sort_values(["driverId", "raceId"]).drop_duplicates("driverId", keep="last")
 
+    # Map driver names to their most recent team information
     mapping = {}
     for _, row in df.iterrows():
         full_name = f"{row['forename']} {row['surname']}"
@@ -32,6 +36,7 @@ def get_recent_driver_constructors(year=None):
         if pd.isna(driver_number):
             driver_number = row.get("number_y")
         mapping[full_name] = {
+            "driverId": row["driverId"],
             "TeamName": row["name"],
             "DriverNumber": driver_number,
             "forename": row.get("forename", ""),
@@ -40,6 +45,9 @@ def get_recent_driver_constructors(year=None):
     return mapping
 
 def get_teams():
+    '''
+    Get all teams and their information
+    '''
     teams_info = {}
     for _, row in constructors.iterrows():
         teams_info[row['name']] = {
@@ -49,7 +57,6 @@ def get_teams():
             "ConstructorId": row['constructorId']
         }
     return teams_info
-
 
 # Streamlit UI
 st.title("F1 Race Analytics and Prediction")
@@ -61,13 +68,23 @@ option = st.sidebar.selectbox("Choose an option:", ["Driver Analysis", "Team Ana
 
 mapping = get_recent_driver_constructors()
 
+
 if option == "Driver Analysis":
-    selected_driver = st.selectbox("Select a driver:", list(mapping.keys()))
+    driver_list = [None] + sorted(mapping.keys())
+    selected_driver = st.selectbox("Select a driver:", driver_list, format_func=lambda x: x if x else "None")
+
+    st.session_state["selected_driver_name"] = selected_driver
     if selected_driver:
         driver.show_driver_page(mapping[selected_driver])
 
 elif option == "Team Analysis":
-    team_names = sorted({v['TeamName'] for v in mapping.values() if v.get('TeamName')})
-    selected_team = st.selectbox("Select a team:", team_names)
+    # Get all teams that have raced between 2018-2024
+    races_range = races[(races['year'] >= 2018) & (races['year'] <= 2024)]
+    race_ids = races_range['raceId'].unique()
+    results_range = results[results['raceId'].isin(race_ids)]
+    team_ids = results_range['constructorId'].unique()
+    teams_in_range = constructors[constructors['constructorId'].isin(team_ids)]
+    team_names = [None] + sorted(teams_in_range['name'].unique())
+    selected_team = st.selectbox("Select a team:", team_names, format_func=lambda x: x if x else "None")
     if selected_team:
         team.show_team_page(selected_team)
