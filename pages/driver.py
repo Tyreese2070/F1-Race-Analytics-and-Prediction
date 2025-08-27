@@ -415,6 +415,113 @@ def qualifying_analysis(driver):
     else:
         st.info("No qualifying data for the selected driver(s) in the selected timeframe.")
 
+
+def finishing_positions_analysis(driver):
+    '''
+    Bar chart showing the frequency of finishing positions
+    '''
+    # State the current timeframe
+    if st.session_state.get("custom_timeframe_selected", False):
+        start_date, end_date = st.session_state["custom_timeframe"]
+        st.write(f"**Finishing Positions from {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}**")
+    else:
+        season = st.session_state.get("race_season", 2024)
+        st.write(f"**Finishing Positions for the {season} season**")
+
+    # Prepare drivers to plot
+    drivers_to_plot = []
+    drivers_to_plot.append({"driver": driver, "color": st.session_state.get("driver_color", "#1f77b4")})
+    if st.session_state.get("enable_comparison") and st.session_state.get("compare_driver_name"):
+        compare_name = st.session_state["compare_driver_name"]
+        if compare_name:
+            drivers_df = pd.read_csv("../archive/drivers.csv")
+            forename, surname = compare_name.split(" ", 1)
+            row = drivers_df[(drivers_df['forename'] == forename) & (drivers_df['surname'] == surname)]
+            if not row.empty:
+                compare_driver = row.iloc[0].to_dict()
+                drivers_to_plot.append({"driver": compare_driver, "color": st.session_state.get("compare_driver_color", "#ff7f0e")})
+
+    # Load results and races
+    results = pd.read_csv("../archive/results.csv")
+    races = pd.read_csv("../archive/races.csv")
+
+    # Filter by timeframe
+    if st.session_state.get("custom_timeframe_selected", False):
+        start_date, end_date = st.session_state["custom_timeframe"]
+        races["date"] = pd.to_datetime(races["date"])
+        races_in_timeframe = races[(races["date"] >= pd.to_datetime(start_date)) & (races["date"] <= pd.to_datetime(end_date))]
+    else:
+        season = st.session_state.get("race_season", 2024)
+        races_in_timeframe = races[races["year"] == season]
+
+    race_ids = races_in_timeframe["raceId"].unique()
+    all_data = []
+
+    for d in drivers_to_plot:
+        drv = d["driver"]
+        color = d["color"]
+        driver_id = drv.get("driverId")
+        driver_name = f"{drv.get('forename', '')} {drv.get('surname', '')}".strip()
+        driver_results = results[(results["driverId"] == driver_id) & (results["raceId"].isin(race_ids))]
+        if not driver_results.empty:
+            counts = driver_results["positionOrder"].value_counts().sort_index().reset_index()
+            counts.columns = ["positionOrder", "count"]
+            counts["driver"] = driver_name
+            counts["color"] = color
+            all_data.append(counts)
+
+    if all_data:
+        plot_df = pd.concat(all_data)
+        # Determine unique positions for consistent bars across drivers
+        all_positions = sorted(plot_df["positionOrder"].unique())
+        # Use driver name string as key in color_discrete_map
+        color_discrete_map = {f"{d['driver'].get('forename', '')} {d['driver'].get('surname', '')}".strip(): d['color'] for d in drivers_to_plot}
+        fig = px.bar(
+            plot_df,
+            x="positionOrder",
+            y="count",
+            color="driver",
+            barmode="group",
+            labels={"positionOrder": "Finishing Position", "count": "Number of Finishes"},
+            title="Frequency of Finishing Positions",
+            color_discrete_map=color_discrete_map,
+            category_orders={"positionOrder": all_positions}
+        )
+        fig.update_layout(xaxis={"categoryorder":"category ascending"})
+        st.plotly_chart(fig, use_container_width=True)
+
+        # --- Average Finishing Position Widget(s) ---
+        avg_stats = []
+        for d in drivers_to_plot:
+            drv = d["driver"]
+            driver_id = drv.get("driverId")
+            driver_name = f"{drv.get('forename', '')} {drv.get('surname', '')}".strip()
+            driver_results = results[(results["driverId"] == driver_id) & (results["raceId"].isin(race_ids))]
+            # Only count classified finishes (positionOrder > 0)
+            classified = driver_results[driver_results["positionOrder"] > 0]
+            avg_finish = classified["positionOrder"].mean() if not classified.empty else None
+            avg_stats.append({"label": driver_name, "avg_finish": avg_finish})
+
+        if len(avg_stats) == 2:
+            s1, s2 = avg_stats[0], avg_stats[1]
+            col1, col2 = st.columns(2)
+            delta1 = delta2 = None
+            if s1["avg_finish"] is not None and s2["avg_finish"] is not None and s2["avg_finish"] != 0 and s1["avg_finish"] != 0:
+                percent1 = (s2["avg_finish"] - s1["avg_finish"]) / s2["avg_finish"] * 100
+                percent2 = (s1["avg_finish"] - s2["avg_finish"]) / s1["avg_finish"] * 100
+                if abs(percent1) < 1e-6:
+                    delta1 = delta2 = "="
+                else:
+                    delta1 = f"{percent1:+.1f}%"
+                    delta2 = f"{percent2:+.1f}%"
+            col1.metric(f"Avg Finishing Position ({s1['label']})", f"{s1['avg_finish']:.2f}" if s1['avg_finish'] is not None else "-", delta=delta1)
+            col2.metric(f"Avg Finishing Position ({s2['label']})", f"{s2['avg_finish']:.2f}" if s2['avg_finish'] is not None else "-", delta=delta2)
+        else:
+            for s in avg_stats:
+                st.metric(f"Avg Finishing Position ({s['label']})", f"{s['avg_finish']:.2f}" if s['avg_finish'] is not None else "-")
+    else:
+        st.info("No finishing data for the selected driver(s) in the selected timeframe.")
+
 def show_driver_page(driver):
     col1, col2, col3 = st.columns(3)
     style = """
@@ -441,3 +548,4 @@ def show_driver_page(driver):
     # Analysis
     points_analysis(driver)
     qualifying_analysis(driver)
+    finishing_positions_analysis(driver)
