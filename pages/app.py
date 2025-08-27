@@ -61,7 +61,8 @@ def get_teams():
 # Streamlit UI
 st.title("F1 Race Analytics and Prediction")
 st.write("Welcome to the F1 Race Analytics and Prediction app!")
-st.button("Info")
+if st.button("Info"):
+    st.info("This app provides insights into F1 driver and team performance. This has data from the 2018-2024 F1 seasons.")
 
 st.sidebar.title("Driver or Team Select")
 option = st.sidebar.selectbox("Choose an option:", ["Driver Analysis", "Team Analysis"])
