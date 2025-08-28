@@ -87,5 +87,7 @@ elif option == "Team Analysis":
     teams_in_range = constructors[constructors['constructorId'].isin(team_ids)]
     team_names = [None] + sorted(teams_in_range['name'].unique())
     selected_team = st.selectbox("Select a team:", team_names, format_func=lambda x: x if x else "None")
+    st.session_state["selected_team_name"] = selected_team
+    
     if selected_team:
         team.show_team_page(selected_team)
