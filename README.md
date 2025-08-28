@@ -5,6 +5,7 @@ pip install requirements.txt
 
 # Running instructions
 ```
+cd /pages
 streamlit run app.py
 ```
 # Data Source
