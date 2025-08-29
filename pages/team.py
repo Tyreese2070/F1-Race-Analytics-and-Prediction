@@ -3,8 +3,9 @@ import streamlit as st
 import sys
 import os
 import pandas as pd
+import plotly.express as px
 
-# Load races.csv to find the last race date of 2024 (copied from drivers.py)
+# Load races.csv to find the last race date of 2024
 def get_last_2024_race_date():
     races = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "archive", "races.csv"))
     races_2024 = races[races['year'] == 2024]
@@ -15,7 +16,7 @@ def get_last_2024_race_date():
 LAST_2024_RACE_DATE = get_last_2024_race_date()
 today = datetime.date.today()
 
-# Show filters for team analysis (adapted from drivers.py, without driver comparison)
+# Show filters for team analysis
 def show_filters_team():
     with st.expander("Show/Hide Filters", expanded=True):
         # --- Team Comparison Toggle and Options ---
@@ -52,6 +53,10 @@ def show_filters_team():
             "Select a timeframe format", ["Race Season", "Custom Timeframe"]
         )
 
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        DATA_DIR = os.path.join(BASE_DIR, "archive")
+        races = pd.read_csv(os.path.join(DATA_DIR, "races.csv"))
+
         if timeframe == "Custom Timeframe":
             start_default, end_default = st.session_state.get("custom_timeframe", (datetime.date(2024,2,1), LAST_2024_RACE_DATE))
             if start_default < datetime.date(2018, 1, 1):
@@ -80,6 +85,10 @@ def show_filters_team():
                 st.session_state["custom_timeframe"] = (start_date, end_date)
                 st.session_state["custom_timeframe_selected"] = True
                 st.session_state["race_season_selected"] = False
+                # Compute and store race_ids for this timeframe
+                races["date"] = pd.to_datetime(races["date"])
+                races_in_timeframe = races[(races["date"] >= pd.to_datetime(start_date)) & (races["date"] <= pd.to_datetime(end_date))]
+                st.session_state["race_ids"] = races_in_timeframe["raceId"].unique()
 
         elif timeframe == "Race Season":
             # Only show seasons the selected team has raced in (2018-2024)
@@ -92,9 +101,11 @@ def show_filters_team():
                 st.session_state["race_season"] = season_choice
                 st.session_state["race_season_selected"] = True
                 st.session_state["custom_timeframe_selected"] = False
+                # Compute and store race_ids for this season
+                races_in_timeframe = races[races["year"] == season_choice]
+                st.session_state["race_ids"] = races_in_timeframe["raceId"].unique()
 
 def team_points_analysis():
-    import plotly.express as px
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DATA_DIR = os.path.join(BASE_DIR, "archive")
     results = pd.read_csv(os.path.join(DATA_DIR, "results.csv"))
@@ -235,6 +246,119 @@ def team_points_analysis():
     else:
         st.info("No team points data for the selected team(s) in the selected timeframe.")
 
+def pitstop_analysis():
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DATA_DIR = os.path.join(BASE_DIR, "archive")
+    pit_stops = pd.read_csv(os.path.join(DATA_DIR, "pit_stops.csv"))
+    results = pd.read_csv(os.path.join(DATA_DIR, "results.csv"))
+    constructors = pd.read_csv(os.path.join(DATA_DIR, "constructors.csv"))
+    selected_team = st.session_state.get("selected_team_name")
+    compare_team = st.session_state.get("compare_team_name") if st.session_state.get("enable_team_comparison") else None
+    teams_to_plot = [selected_team]
+    if compare_team:
+        teams_to_plot.append(compare_team)
+    races = pd.read_csv(os.path.join(DATA_DIR, "races.csv"))
+    if st.session_state.get("custom_timeframe_selected", False):
+        start_date, end_date = st.session_state["custom_timeframe"]
+        races["date"] = pd.to_datetime(races["date"])
+        races_in_timeframe = races[(races["date"] >= pd.to_datetime(start_date)) & (races["date"] <= pd.to_datetime(end_date))]
+    else:
+        season = st.session_state.get("race_season", 2024)
+        races_in_timeframe = races[races["year"] == season]
+    race_ids = races_in_timeframe["raceId"].unique()
+    pit_data = []
+    for team_name in teams_to_plot:
+        if not team_name:
+            continue
+        team_row = constructors[constructors['name'] == team_name]
+        if team_row.empty:
+            continue
+        team_id = team_row.iloc[0]['constructorId']
+        team_results = results[(results["constructorId"].astype(int) == int(team_id)) & (results["raceId"].isin(race_ids))]
+        driver_ids = team_results["driverId"].unique()
+        team_pits = pit_stops[(pit_stops["raceId"].isin(race_ids)) & (pit_stops["driverId"].isin(driver_ids))].copy()
+        if team_pits.empty:
+            continue
+        team_pits["team"] = team_name
+        team_pits = team_pits[pd.to_numeric(team_pits["milliseconds"], errors="coerce").notna()]
+        team_pits = team_pits[team_pits["milliseconds"] > 0]
+        team_pits = team_pits[(team_pits["milliseconds"] >= 0) & (team_pits["milliseconds"] <= 40000)]
+        team_pits["duration_s"] = team_pits["milliseconds"] / 1000.0
+        pit_data.append(team_pits)
+    if pit_data:
+        pit_df = pd.concat(pit_data)
+        filtered_df = pit_df[(pit_df["duration_s"] >= 0) & (pit_df["duration_s"] <= 40)]
+        filtered_df["team"] = pd.Categorical(filtered_df["team"], categories=sorted(filtered_df["team"].unique()), ordered=True)
+        fig = px.box(
+            filtered_df,
+            x="team",
+            y="duration_s",
+            points="outliers",
+            color="team",
+            labels={"duration_s": "Pit Stop Duration (s)", "team": "Team"},
+            title="Pit Stop Time Distribution (Box Plot)",
+            category_orders={"team": sorted(filtered_df["team"].unique())}
+        )
+        fig.update_traces(jitter=0.3, marker=dict(size=6, opacity=0.7))
+        fig.update_layout(yaxis=dict(title="Pit Stop Duration (s)", range=[0, 40]))
+        st.plotly_chart(fig, use_container_width=True)
+
+        # --- Pit Stop Stats Widgets ---
+        pit_stats = []
+        for team_name in sorted(filtered_df["team"].unique()):
+            team_pits = filtered_df[filtered_df["team"] == team_name]["duration_s"]
+            if not team_pits.empty:
+                pit_stats.append({
+                    "label": team_name,
+                    "mean": team_pits.mean(),
+                    "best": team_pits.min(),
+                    "worst": team_pits.max()
+                })
+        if len(pit_stats) == 2:
+            s1, s2 = pit_stats[0], pit_stats[1]
+            col1, col2, col3 = st.columns(3)
+            def mean_delta(a, b):
+                if a is None or b is None:
+                    return None
+                diff = b - a
+                if abs(diff) < 1e-6:
+                    return "="
+                sign = "+" if diff > 0 else ""
+                return f"{sign}{diff:.3f} s"
+            def best_delta(a, b):
+                if a is None or b is None:
+                    return None
+                diff = b - a
+                if abs(diff) < 1e-6:
+                    return "="
+                sign = "+" if diff > 0 else ""
+                return f"{sign}{diff:.3f} s"
+            def worst_delta(a, b):
+                if a is None or b is None:
+                    return None
+                diff = b - a
+                if abs(diff) < 1e-6:
+                    return "="
+                sign = "-" if diff < 0 else "+"
+                return f"{sign}{abs(diff):.3f} s"
+            # Mean
+            col1.metric(f"Mean Pit Stop ({s1['label']})", f"{s1['mean']:.3f} s", delta=mean_delta(s1['mean'], s2['mean']))
+            col1.metric(f"Mean Pit Stop ({s2['label']})", f"{s2['mean']:.3f} s", delta=mean_delta(s2['mean'], s1['mean']))
+            # Best 
+            col2.metric(f"Best Pit Stop ({s1['label']})", f"{s1['best']:.3f} s", delta=best_delta(s1['best'], s2['best']))
+            col2.metric(f"Best Pit Stop ({s2['label']})", f"{s2['best']:.3f} s", delta=best_delta(s2['best'], s1['best']))
+            # Worst
+            col3.metric(f"Worst Pit Stop ({s1['label']})", f"{s1['worst']:.3f} s", delta=worst_delta(s1['worst'], s2['worst']))
+            col3.metric(f"Worst Pit Stop ({s2['label']})", f"{s2['worst']:.3f} s", delta=worst_delta(s2['worst'], s1['worst']))
+        else:
+            for s in pit_stats:
+                col1, col2, col3 = st.columns(3)
+                col1.metric(f"Mean Pit Stop ({s['label']})", f"{s['mean']:.3f} s")
+                col2.metric(f"Best Pit Stop ({s['label']})", f"{s['best']:.3f} s")
+                col3.metric(f"Worst Pit Stop ({s['label']})", f"{s['worst']:.3f} s")
+    else:
+        st.info("No pit stop data for the selected team(s) in the selected timeframe.")
+
 def show_team_page(team_name):
     st.subheader(f"Analysis for {team_name}")
 
@@ -267,3 +391,5 @@ def show_team_page(team_name):
     st.markdown("<br>", unsafe_allow_html=True)
     show_filters_team()
     team_points_analysis()
+
+    pitstop_analysis()
