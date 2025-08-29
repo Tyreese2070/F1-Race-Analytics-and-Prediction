@@ -12,7 +12,9 @@ cd /pages
 streamlit run app.py
 ```
 # Data Source
-https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020/data
+- https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020/data (2018-2024)
+
+- https://github.com/toUpperCase78/formula1-datasets (2025 data)
 
 # 2025 World Champion Prediction Model
 ## Features
