@@ -1,3 +1,6 @@
+# Notes
+- Pit stop times from the data contains the time for the entire pit sequence from pitlane entry to pitlane exit, not just the time to change tyres and release the car.
+
 # Initial Setup
 ```
 pip install requirements.txt
