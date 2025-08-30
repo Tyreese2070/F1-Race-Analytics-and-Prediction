@@ -65,7 +65,7 @@ if st.button("Info"):
     st.info("This app provides insights into F1 driver and team performance. This has data from the 2018-2024 F1 seasons.")
 
 st.sidebar.title("Driver or Team Select")
-option = st.sidebar.selectbox("Choose an option:", ["Driver Analysis", "Team Analysis"])
+option = st.sidebar.selectbox("Choose an option:", ["Driver Analysis", "Team Analysis", "2025 Champion Prediction"])
 
 mapping = get_recent_driver_constructors()
 
