@@ -2,6 +2,7 @@ import os
 import streamlit as st
 import driver, team
 import pandas as pd
+import runpy
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "archive")
@@ -91,3 +92,6 @@ elif option == "Team Analysis":
     
     if selected_team:
         team.show_team_page(selected_team)
+
+elif option == "2025 Champion Prediction":
+    runpy.run_path(os.path.join(os.path.dirname(__file__), "predict.py"))
