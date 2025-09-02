@@ -3,7 +3,7 @@
 
 # Initial Setup
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 # Running instructions
