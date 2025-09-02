@@ -16,19 +16,16 @@ streamlit run app.py
 
 - https://github.com/toUpperCase78/formula1-datasets (2025 data)
 
-# 2025 World Champion Prediction Model
-## Features
-- Currrent points in WDC
-- Avg points / race
-- Wins
-- Podiums
-- Avg Finishing position
-- Team performance ??
-- Head to head vs teammates or WDC contender
+# Overview
 
-## Model
-- Random Forest Classifier?
+## Select and view driver or team statistics for any time from 2018-2024 (inclusive)
+![Lando Norris 2024 points graph](images/norris_points.png)
 
-## Data
-- Use kaggle data with 2025 season.
-- Create, find, or web scrape the 2025 season data. Could ask chatgpt to generate a csv of results for all drivers this season to add to the data
+## Compare teams or drivers
+![Max Verstappen and Lewis Hamilton 2021 points graph](images/driver_comparison.png)
+
+## Predict the 2025 Drivers World Champion
+- This model uses Random Forest Classification
+- It previously predicted Lando Norris to be the 2025 world champion with data up to the Hunagarian GP, this changed after his engine failure in the following race
+- Note: This contains data up to 2025 round 15 (Dutch GP)
+![Oscar Piastri predicted as 2025 Drivers World Champion](images/wdc_prediction.png)

@@ -63,9 +63,9 @@ def get_teams():
 st.title("F1 Race Analytics and Prediction")
 st.write("Welcome to the F1 Race Analytics and Prediction app!")
 if st.button("Info"):
-    st.info("This app provides insights into F1 driver and team performance. This has data from the 2018-2024 F1 seasons.")
+    st.info("This app provides insights into F1 driver and team performance. This has data from the 2018-2024 F1 seasons. The 2025 Champion prediction uses 2025 data up to the 2025 Dutch GP")
 
-st.sidebar.title("Driver or Team Select")
+st.sidebar.title("Page Select")
 option = st.sidebar.selectbox("Choose an option:", ["Driver Analysis", "Team Analysis", "2025 Champion Prediction"])
 
 mapping = get_recent_driver_constructors()
